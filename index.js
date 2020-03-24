@@ -9,7 +9,7 @@ const getEnvironment = string => {
     const matches = string.match(/(int|qa|stage|prod){1}\//)
 
     if(!matches)
-        throw new Error("No environment provided.")
+        throw new Error('No environment provided.')
     
     return matches[1]
 }
@@ -70,7 +70,7 @@ const getLatestVersion = async fileVersion => {
     return foundVersion.map(v => v.original)
 }
 
-exports.handler = async ({ path }) => {
+const versionHandler = async ({ path }) => {
     if(!path)
         return new Promise(res => res({
             statusCode: 400
@@ -106,3 +106,7 @@ exports.handler = async ({ path }) => {
         }
     }
 }
+
+module.exports = { getEnvironment, getVersionObject, getS3Versions, getLatestVersion, versionHandler }
+
+exports.handler = versionHandler
