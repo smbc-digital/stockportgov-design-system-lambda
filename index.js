@@ -47,11 +47,12 @@ const getS3Versions = () => new Promise((res, rej) => {
     })
 })
 
+/** int/1 */
 const getLatestVersion = async fileVersion => {
     const versions = await getS3Versions()
 
-    const environment = getEnvironment(fileVersion)
-    const versionSearchingFor = getVersionObject(fileVersion)
+    const environment = getEnvironment(fileVersion) /** int */
+    const versionSearchingFor = getVersionObject(fileVersion) /* { major: 1, minor: null, patch: null, orignal: 'int/1.1.1' } */
     const filteredVersions = versions
         .filter(version => version.includes(`${environment}/`))
         .filter(version => /[aA-zZ]\/[0-9]+./.test(version))
@@ -107,6 +108,10 @@ const versionHandler = async ({ path }) => {
     }
 }
 
-module.exports = { getEnvironment, getVersionObject, getS3Versions, getLatestVersion, versionHandler }
-
-exports.handler = versionHandler
+module.exports = {
+    getEnvironment,
+    getVersionObject,
+    getS3Versions,
+    getLatestVersion,
+    handler: versionHandler
+}

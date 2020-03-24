@@ -1,6 +1,6 @@
 const AWS = require('aws-sdk')
 const semverSort = require('semver-sort')
-let { getEnvironment, getVersionObject, getS3Versions, getLatestVersion, versionHandler } = require('./index')
+let { getEnvironment, getVersionObject, getS3Versions, getLatestVersion, handler } = require('./index')
 
 describe('getEnvironment', () => {
     it('Should return int/qa/stage/prod environment', () => {
@@ -193,11 +193,11 @@ describe('versionHandler', () => {
     })
 
     it('Should return 400 when path null', async () => {
-        expect((await versionHandler({})).statusCode).toBe(400)
+        expect((await handler({})).statusCode).toBe(400)
     })
 
     it('Should return 400 when path incorrect format', async () => {
-        expect((await versionHandler({path: 'invalid_path'})).statusCode).toBe(400)
+        expect((await handler({path: 'invalid_path'})).statusCode).toBe(400)
     })
 
     it('Should return 404 when getLatestVersion throws error', async () => {
@@ -211,7 +211,7 @@ describe('versionHandler', () => {
             listObjectsV2: mockListObjectV2
         }))
         
-        const result = await versionHandler({path: '/int/1.1.0/smbc-frontend.min.css'})
+        const result = await handler({path: '/int/1.1.0/smbc-frontend.min.css'})
         expect(result.statusCode).toBe(404)
         expect(result.body).toEqual('No versions available.')
     })
@@ -230,7 +230,7 @@ describe('versionHandler', () => {
             listObjectsV2: mockListObjectV2
         }))
         
-        const result = await versionHandler({path: '/int/1.1.1/smbc-frontend.min.css'})
+        const result = await handler({path: '/int/1.1.1/smbc-frontend.min.css'})
         expect(result.statusCode).toBe(404)
         expect(result.body).toEqual('No versions available.')
     })
@@ -249,7 +249,7 @@ describe('versionHandler', () => {
             listObjectsV2: mockListObjectV2
         }))
         
-        const result = await versionHandler({path: '/int/1.1.1/smbc-frontend-ie8.min.css'})
+        const result = await handler({path: '/int/1.1.1/smbc-frontend-ie8.min.css'})
         expect(result.statusCode).toBe(302)
         expect(result.headers.Location).toContain('/int/1.1.1/smbc-frontend-ie8.min.css')
     })
