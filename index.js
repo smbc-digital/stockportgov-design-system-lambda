@@ -77,7 +77,7 @@ const versionHandler = async ({ path }) => {
             statusCode: 400
         }))
     
-    const matches = path.match(/^(\/(int|qa|stage|prod){1}\/?([0-9]+(\.[0-9]+){0,2})\/)(smbc-frontend.min.css|smbc-frontend-ie8.min.css){1}/)
+        const matches = path.match(/^(\/(int|qa|stage|prod){1}\/?([0-9]+(\.[0-9]+){0,2})\/)([\w\W]*)(.min.css|.min.js){1}$/)
 
     // wrapped in promise as lambda requries a promise to be returned
     if (!matches)
