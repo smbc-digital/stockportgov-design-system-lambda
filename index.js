@@ -87,7 +87,7 @@ const versionHandler = async ({ path }) => {
   }
 
   const matches = path.match(
-    /^(\/(int|qa|stage|prod){1}\/?([0-9]+(\.[0-9]+){0,2})\/)([\w\W]*)(.min.css|.min.js){1}$/
+    /^(\/(int|qa|stage|prod){1}\/?([0-9]+(\.[0-9]+){0,2})\/)(([\w\W]*).min.css|([\w\W]*).min.js){1}$/
   )
 
   // wrapped in promise as lambda requries a promise to be returned
@@ -100,9 +100,10 @@ const versionHandler = async ({ path }) => {
   }
 
   const version = matches[1]
+
   try {
     const filesFound = await getLatestVersion(version)
-    const regex = new RegExp(`(${matches[matches.length - 2]}){1}`, 'g')
+    const regex = new RegExp(`(${matches[0].substr(1)}){1}`, 'g')
     const key = filesFound.find(key => !!regex.exec(key))
 
     if (!key) {
