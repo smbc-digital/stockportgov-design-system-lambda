@@ -275,30 +275,6 @@ describe('versionHandler', () => {
     )
   })
 
-  it('Should return 302 when file found', async () => {
-    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
-      callback(undefined, {
-        Contents: [
-          { Key: 'int/2.0.1/smbc-frontend-ie8.min.css' },
-          { Key: 'int/1.1.2/smbc-frontend-ie8.min.css' },
-          { Key: 'int/1.1.1/smbc-frontend-ie8.min.css' }
-        ]
-      })
-    })
-
-    AWS.S3 = jest.fn().mockImplementation(() => ({
-      listObjectsV2: mockListObjectV2
-    }))
-
-    const result = await handler({
-      path: '/int/1.1.1/smbc-frontend-ie8.min.css'
-    })
-    expect(result.statusCode).toBe(302)
-    expect(result.headers.Location).toContain(
-      '/int/1.1.1/smbc-frontend-ie8.min.css'
-    )
-  })
-
   it('Should return 302 with latest major when file found', async () => {
     const mockListObjectV2 = jest.fn((bucketParams, callback) => {
       callback(undefined, {
