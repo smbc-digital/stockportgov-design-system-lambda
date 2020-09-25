@@ -103,7 +103,7 @@ const versionHandler = async ({ path }) => {
 
   try {
     const filesFound = await getLatestVersion(version)
-    const regex = new RegExp(`(${matches[0].substr(1)}){1}`, 'g')
+    const regex = new RegExp(`(${matches[5].substr(1)}){1}`, 'g')
     const key = filesFound.find(key => !!regex.exec(key))
 
     if (!key) {
