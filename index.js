@@ -87,7 +87,7 @@ const versionHandler = async ({ path }) => {
   }
 
   const matches = path.match(
-    /^(\/(int|qa|stage|prod){1}\/?([0-9]+(\.[0-9]+){0,2})\/)(([\w\W]*).min.css|([\w\W]*).min.js|([\w\W]*).woff|([\w\W]*).ttf){1}$/
+    /^(\/(int|qa|stage|prod){1}\/?([0-9]+(\.[0-9]+){0,2})\/)(([\w\W]*).min.css|([\w\W]*).min.js|([\w\W]*).woff|([\w\W]*).ttf|([\w\W]*).eot){1}$/
   )
 
   // wrapped in promise as lambda requries a promise to be returned
