@@ -275,6 +275,50 @@ describe('versionHandler', () => {
     )
   })
 
+  it('Should return 302 when file found for .woff extenison', async () => {
+    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
+      callback(undefined, {
+        Contents: [
+          { Key: 'int/1.1.1/assets/fonts/fa-solid-900.woff' }
+        ]
+      })
+    })
+
+    AWS.S3 = jest.fn().mockImplementation(() => ({
+      listObjectsV2: mockListObjectV2
+    }))
+
+    const result = await handler({
+      path: '/int/1/assets/fonts/fa-solid-900.woff'
+    })
+    expect(result.statusCode).toBe(302)
+    expect(result.headers.Location).toContain(
+      '/int/1.1.1/assets/fonts/fa-solid-900.woff'
+    )
+  })
+
+  it('Should return 302 when file found for .tff extenison', async () => {
+    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
+      callback(undefined, {
+        Contents: [
+          { Key: 'int/1.1.1/assets/fonts/fa-solid-900.ttf' }
+        ]
+      })
+    })
+
+    AWS.S3 = jest.fn().mockImplementation(() => ({
+      listObjectsV2: mockListObjectV2
+    }))
+
+    const result = await handler({
+      path: '/int/1/assets/fonts/fa-solid-900.ttf'
+    })
+    expect(result.statusCode).toBe(302)
+    expect(result.headers.Location).toContain(
+      '/int/1.1.1/assets/fonts/fa-solid-900.ttf'
+    )
+  })
+
   it('Should return 302 with latest major when file found', async () => {
     const mockListObjectV2 = jest.fn((bucketParams, callback) => {
       callback(undefined, {
