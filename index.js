@@ -1,5 +1,4 @@
 const AWS = require('aws-sdk')
-const semverSort = require('semver-sort')
 
 const key = process.env.KEY
 const secret = process.env.SECRET
@@ -54,21 +53,21 @@ const getLatestVersion = async fileVersion => {
   const versions = await getS3Versions()
   const environment = getEnvironment(fileVersion)
   const versionSearchingFor = getVersionObject(fileVersion)
-  const filteredVersions = versions
-    .filter(version => version.includes(`${environment}/`))
-    .filter(version => /[aA-zZ]\/[0-9]+./.test(version))
+  const versionsByEnvironment = versions.filter(version => version.includes(`${environment}/`))
+  const versionsWithVersion = versionsByEnvironment.filter(version => /[aA-zZ]\/[0-9]+./.test(version))
+  const versionObjects = versionsWithVersion.map(version => getVersionObject(version))
+  const majorVersions = versionObjects.filter(version => version.major === versionSearchingFor.major)
+  majorVersions.sort(function (a, b) { return parseInt(b.patch) - parseInt(a.patch) })
+  majorVersions.sort(function (a, b) { return parseInt(b.minor) - parseInt(a.minor) })
 
-  const foundVersion = semverSort
-    .desc(filteredVersions)
-    .map(version => getVersionObject(version))
-    .filter(
-      version =>
-        version.major === versionSearchingFor.major &&
-        (!versionSearchingFor.minor ||
-          version.minor === versionSearchingFor.minor) &&
-        (!versionSearchingFor.patch ||
-          version.patch === versionSearchingFor.patch)
-    )
+  var foundVersion
+  if (versionSearchingFor.minor !== null && versionSearchingFor.patch !== null) {
+    foundVersion = majorVersions.filter(version => version.minor === versionSearchingFor.minor && version.patch === versionSearchingFor.patch)
+  } else if (versionSearchingFor.minor !== null && versionSearchingFor.patch === null) {
+    foundVersion = majorVersions.filter(version => version.minor === versionSearchingFor.minor)
+  } else if (versionSearchingFor.minor === null && versionSearchingFor.patch === null) {
+    foundVersion = majorVersions
+  }
 
   if (!foundVersion.length) {
     throw new Error('No versions available.')
