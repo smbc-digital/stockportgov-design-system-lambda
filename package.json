@@ -11,8 +11,6 @@
     "devDependencies": {
         "aws-sdk": "^2.642.0",
         "jest": "^25.1.0",
-        "semver": "^7.1.3",
-        "semver-sort": "0.0.4",
         "standard": "^14.3.4"
     }
 }

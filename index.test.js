@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 const AWS = require('aws-sdk')
-const semverSort = require('semver-sort')
 const {
   getEnvironment,
   getVersionObject,
@@ -126,7 +125,6 @@ describe('getS3Versions', () => {
 describe('getLatestVersion', () => {
   beforeEach(() => {
     AWS.Credentials = jest.fn()
-    semverSort.desc = jest.fn(versions => versions)
   })
 
   it('Should find specific version', async () => {
@@ -271,7 +269,6 @@ describe('getLatestVersion', () => {
 describe('versionHandler', () => {
   beforeEach(() => {
     AWS.Credentials = jest.fn()
-    semverSort.desc = jest.fn(versions => versions)
   })
 
   it('Should return 400 when path null', async () => {
