@@ -50,12 +50,12 @@ const getS3Versions = () =>
   })
 
 const getLatestVersion = async fileVersion => {
-  const versions = await getS3Versions()
+  const keys = await getS3Versions()
   const environment = getEnvironment(fileVersion)
   const versionSearchingFor = getVersionObject(fileVersion)
-  const versionsByEnvironment = versions.filter(version => version.includes(`${environment}/`))
-  const versionsWithVersion = versionsByEnvironment.filter(version => /[aA-zZ]\/[0-9]+./.test(version))
-  const versionObjects = versionsWithVersion.map(version => getVersionObject(version))
+  const keysByEnvironment = keys.filter(key => key.includes(`${environment}/`))
+  const keysWithVersion = keysByEnvironment.filter(key => /[aA-zZ]\/[0-9]+./.test(key))
+  const versionObjects = keysWithVersion.map(key => getVersionObject(key))
   const majorVersions = versionObjects.filter(version => version.major === versionSearchingFor.major)
   majorVersions.sort(function (a, b) { return parseInt(b.patch) - parseInt(a.patch) })
   majorVersions.sort(function (a, b) { return parseInt(b.minor) - parseInt(a.minor) })
