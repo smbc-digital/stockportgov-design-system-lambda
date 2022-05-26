@@ -1,7 +1,6 @@
 /* eslint-env jest */
 
 const AWS = require('aws-sdk')
-const semverSort = require('semver-sort')
 const {
   getEnvironment,
   getVersionObject,
@@ -126,16 +125,32 @@ describe('getS3Versions', () => {
 describe('getLatestVersion', () => {
   beforeEach(() => {
     AWS.Credentials = jest.fn()
-    semverSort.desc = jest.fn(versions => versions)
   })
 
   it('Should find specific version', async () => {
     const mockListObjectV2 = jest.fn((bucketParams, callback) => {
       callback(undefined, {
         Contents: [
-          { Key: 'int/2.0.1' },
-          { Key: 'int/1.1.2' },
-          { Key: 'int/1.1.1' }
+          { Key: 'int/1.0.0' },
+          { Key: 'int/1.2.11' },
+          { Key: 'int/1.2.10' },
+          { Key: 'int/1.2.16' },
+          { Key: 'int/1.2.13' },
+          { Key: 'int/1.4.1' },
+          { Key: 'int/1.2.14' },
+          { Key: 'int/1.2.15' },
+          { Key: 'int/1.2.17' },
+          { Key: 'int/1.5.0' },
+          { Key: 'int/1.2.8' },
+          { Key: 'int/1.1.0' },
+          { Key: 'int/1.2.9' },
+          { Key: 'int/1.2.12' },
+          { Key: 'int/1.3.2' },
+          { Key: 'prod/1.3.32' },
+          { Key: 'prod/3.2.12' },
+          { Key: 'prod/2.1.1' },
+          { Key: 'int/1.5.1' },
+          { Key: 'int/2.0.0' }
         ]
       })
     })
@@ -144,19 +159,36 @@ describe('getLatestVersion', () => {
       listObjectsV2: mockListObjectV2
     }))
 
-    const result = await getLatestVersion('int/1.1.1')
+    const result = await getLatestVersion('int/1.2.15')
 
     expect(result.length).toBe(1)
-    expect(result).toContain('int/1.1.1')
+    expect(result).toContain('int/1.2.15')
   })
 
   it('Should find latest version of major provided', async () => {
     const mockListObjectV2 = jest.fn((bucketParams, callback) => {
       callback(undefined, {
         Contents: [
-          { Key: 'int/2.0.1' },
-          { Key: 'int/1.1.2' },
-          { Key: 'int/1.1.1' }
+          { Key: 'int/1.0.0' },
+          { Key: 'int/1.2.11' },
+          { Key: 'int/1.2.10' },
+          { Key: 'int/1.2.16' },
+          { Key: 'int/1.2.13' },
+          { Key: 'int/1.4.1' },
+          { Key: 'int/1.2.14' },
+          { Key: 'int/1.2.15' },
+          { Key: 'int/1.2.17' },
+          { Key: 'int/1.5.0' },
+          { Key: 'int/1.2.8' },
+          { Key: 'int/1.1.0' },
+          { Key: 'int/1.2.9' },
+          { Key: 'int/1.2.12' },
+          { Key: 'int/1.3.2' },
+          { Key: 'prod/1.3.32' },
+          { Key: 'prod/3.2.12' },
+          { Key: 'prod/2.1.1' },
+          { Key: 'int/1.5.1' },
+          { Key: 'int/2.0.0' }
         ]
       })
     })
@@ -167,17 +199,34 @@ describe('getLatestVersion', () => {
 
     const result = await getLatestVersion('int/1')
 
-    expect(result.length).toBe(2)
-    expect(result[0]).toEqual('int/1.1.2')
+    expect(result.length).toBe(16)
+    expect(result[0]).toEqual('int/1.5.1')
   })
 
   it('Should find latest version of major.minor provided', async () => {
     const mockListObjectV2 = jest.fn((bucketParams, callback) => {
       callback(undefined, {
         Contents: [
-          { Key: 'int/2.0.1' },
-          { Key: 'int/1.1.2' },
-          { Key: 'int/1.1.1' }
+          { Key: 'int/1.0.0' },
+          { Key: 'int/1.2.11' },
+          { Key: 'int/1.2.10' },
+          { Key: 'int/1.2.16' },
+          { Key: 'int/1.2.13' },
+          { Key: 'int/1.4.1' },
+          { Key: 'int/1.2.14' },
+          { Key: 'int/1.2.15' },
+          { Key: 'int/1.2.17' },
+          { Key: 'int/1.5.0' },
+          { Key: 'int/1.2.8' },
+          { Key: 'int/1.1.0' },
+          { Key: 'int/1.2.9' },
+          { Key: 'int/1.2.12' },
+          { Key: 'int/1.3.2' },
+          { Key: 'prod/1.3.32' },
+          { Key: 'prod/3.2.12' },
+          { Key: 'prod/2.1.1' },
+          { Key: 'int/1.5.1' },
+          { Key: 'int/2.0.0' }
         ]
       })
     })
@@ -186,10 +235,10 @@ describe('getLatestVersion', () => {
       listObjectsV2: mockListObjectV2
     }))
 
-    const result = await getLatestVersion('int/1.1')
+    const result = await getLatestVersion('int/1.2')
 
-    expect(result.length).toBe(2)
-    expect(result[0]).toEqual('int/1.1.2')
+    expect(result.length).toBe(10)
+    expect(result[0]).toEqual('int/1.2.17')
   })
 
   it('Should throw error', async () => {
@@ -220,7 +269,6 @@ describe('getLatestVersion', () => {
 describe('versionHandler', () => {
   beforeEach(() => {
     AWS.Credentials = jest.fn()
-    semverSort.desc = jest.fn(versions => versions)
   })
 
   it('Should return 400 when path null', async () => {
