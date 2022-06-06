@@ -1,275 +1,92 @@
 /* eslint-env jest */
-
 const AWS = require('aws-sdk')
-const {
-  getEnvironment,
-  getVersionObject,
-  getS3Versions,
-  getLatestVersion,
-  handler
-} = require('./index')
+const { handler } = require('./index')
 
-describe('getEnvironment', () => {
-  it('Should return int/qa/stage/prod environment', () => {
-    const environment = [
-      getEnvironment('int/'),
-      getEnvironment('qa/'),
-      getEnvironment('stage/'),
-      getEnvironment('prod/')
-    ]
-    expect(environment[0]).toEqual('int')
-    expect(environment[1]).toEqual('qa')
-    expect(environment[2]).toEqual('stage')
-    expect(environment[3]).toEqual('prod')
-  })
-
-  it('Should throw error if it does not match the condition', () => {
-    expect(() => {
-      getEnvironment('test/')
-    }).toThrow()
-
-    expect(() => {
-      getEnvironment('test')
-    }).toThrow()
-
-    expect(() => {
-      getEnvironment('int')
-    }).toThrow()
-  })
-})
-
-describe('getVersionObject', () => {
-  it('Should return correct version', () => {
-    const version = getVersionObject('/1.2.3/')
-    expect(version.major).toBe('1')
-    expect(version.minor).toBe('2')
-    expect(version.patch).toBe('3')
-    expect(version.original).toBe('/1.2.3/')
-  })
-
-  it('Should return correct version if only major provided', () => {
-    const version = getVersionObject('/1/')
-    expect(version.major).toBe('1')
-    expect(version.minor).toBe(null)
-    expect(version.patch).toBe(null)
-    expect(version.original).toBe('/1/')
-  })
-
-  it('Should return correct version if only major and minor provided', () => {
-    const version = getVersionObject('/1.2/')
-    expect(version.major).toBe('1')
-    expect(version.minor).toBe('2')
-    expect(version.patch).toBe(null)
-    expect(version.original).toBe('/1.2/')
-  })
-
-  it('Should return version if version provided does not match condition', () => {
-    const version = getVersionObject('/test/')
-    expect(version.major).toBe(null)
-    expect(version.minor).toBe(null)
-    expect(version.patch).toBe(null)
-    expect(version.original).toBe('/test/')
-  })
-})
-
-describe('getS3Versions', () => {
-  it('Should return list of keys', async () => {
-    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
-      callback(undefined, {
-        Contents: [
-          {
-            Key: '12345TEST'
-          }
-        ]
-      })
-    })
-
-    AWS.S3 = jest.fn().mockImplementation(() => ({
-      listObjectsV2: mockListObjectV2
-    }))
-
-    AWS.Credentials = jest.fn()
-
-    const result = await getS3Versions()
-
-    expect(result).toContain('12345TEST')
-    expect(result.length).toBe(1)
-    expect(mockListObjectV2.mock.calls.length).toBe(1)
-    expect(AWS.Credentials.mock.calls.length).toBe(1)
-  })
-
-  it('Should throw error', async () => {
-    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
-      callback(1, undefined) // eslint-disable-line
-    })
-
-    AWS.S3 = jest.fn().mockImplementation(() => ({
-      listObjectsV2: mockListObjectV2
-    }))
-
-    AWS.Credentials = jest.fn()
-
-    try {
-      await getS3Versions()
-    } catch (error) {
-      expect(error.message).toEqual('No versions available.')
-    }
-
-    expect(mockListObjectV2.mock.calls.length).toBe(1)
-    expect(AWS.Credentials.mock.calls.length).toBe(1)
-  })
-
-  afterEach(() => jest.resetAllMocks())
-})
-
-describe('getLatestVersion', () => {
-  beforeEach(() => {
-    AWS.Credentials = jest.fn()
-  })
-
-  it('Should find specific version', async () => {
-    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
-      callback(undefined, {
-        Contents: [
-          { Key: 'int/1.0.0' },
-          { Key: 'int/1.2.11' },
-          { Key: 'int/1.2.10' },
-          { Key: 'int/1.2.16' },
-          { Key: 'int/1.2.13' },
-          { Key: 'int/1.4.1' },
-          { Key: 'int/1.2.14' },
-          { Key: 'int/1.2.15' },
-          { Key: 'int/1.2.17' },
-          { Key: 'int/1.5.0' },
-          { Key: 'int/1.2.8' },
-          { Key: 'int/1.1.0' },
-          { Key: 'int/1.2.9' },
-          { Key: 'int/1.2.12' },
-          { Key: 'int/1.3.2' },
-          { Key: 'prod/1.3.32' },
-          { Key: 'prod/3.2.12' },
-          { Key: 'prod/2.1.1' },
-          { Key: 'int/1.5.1' },
-          { Key: 'int/2.0.0' }
-        ]
-      })
-    })
-
-    AWS.S3 = jest.fn().mockImplementation(() => ({
-      listObjectsV2: mockListObjectV2
-    }))
-
-    const result = await getLatestVersion('int/1.2.15')
-
-    expect(result.length).toBe(1)
-    expect(result).toContain('int/1.2.15')
-  })
-
-  it('Should find latest version of major provided', async () => {
-    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
-      callback(undefined, {
-        Contents: [
-          { Key: 'int/1.0.0' },
-          { Key: 'int/1.2.11' },
-          { Key: 'int/1.2.10' },
-          { Key: 'int/1.2.16' },
-          { Key: 'int/1.2.13' },
-          { Key: 'int/1.4.1' },
-          { Key: 'int/1.2.14' },
-          { Key: 'int/1.2.15' },
-          { Key: 'int/1.2.17' },
-          { Key: 'int/1.5.0' },
-          { Key: 'int/1.2.8' },
-          { Key: 'int/1.1.0' },
-          { Key: 'int/1.2.9' },
-          { Key: 'int/1.2.12' },
-          { Key: 'int/1.3.2' },
-          { Key: 'prod/1.3.32' },
-          { Key: 'prod/3.2.12' },
-          { Key: 'prod/2.1.1' },
-          { Key: 'int/1.5.1' },
-          { Key: 'int/2.0.0' }
-        ]
-      })
-    })
-
-    AWS.S3 = jest.fn().mockImplementation(() => ({
-      listObjectsV2: mockListObjectV2
-    }))
-
-    const result = await getLatestVersion('int/1')
-
-    expect(result.length).toBe(16)
-    expect(result[0]).toEqual('int/1.5.1')
-  })
-
-  it('Should find latest version of major.minor provided', async () => {
-    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
-      callback(undefined, {
-        Contents: [
-          { Key: 'int/1.0.0' },
-          { Key: 'int/1.2.11' },
-          { Key: 'int/1.2.10' },
-          { Key: 'int/1.2.16' },
-          { Key: 'int/1.2.13' },
-          { Key: 'int/1.4.1' },
-          { Key: 'int/1.2.14' },
-          { Key: 'int/1.2.15' },
-          { Key: 'int/1.2.17' },
-          { Key: 'int/1.5.0' },
-          { Key: 'int/1.2.8' },
-          { Key: 'int/1.1.0' },
-          { Key: 'int/1.2.9' },
-          { Key: 'int/1.2.12' },
-          { Key: 'int/1.3.2' },
-          { Key: 'prod/1.3.32' },
-          { Key: 'prod/3.2.12' },
-          { Key: 'prod/2.1.1' },
-          { Key: 'int/1.5.1' },
-          { Key: 'int/2.0.0' }
-        ]
-      })
-    })
-
-    AWS.S3 = jest.fn().mockImplementation(() => ({
-      listObjectsV2: mockListObjectV2
-    }))
-
-    const result = await getLatestVersion('int/1.2')
-
-    expect(result.length).toBe(10)
-    expect(result[0]).toEqual('int/1.2.17')
-  })
-
-  it('Should throw error', async () => {
-    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
-      callback(undefined, {
-        Contents: [
-          { Key: 'int/2.0.1' },
-          { Key: 'int/1.1.2' },
-          { Key: 'int/1.1.1' }
-        ]
-      })
-    })
-
-    AWS.S3 = jest.fn().mockImplementation(() => ({
-      listObjectsV2: mockListObjectV2
-    }))
-
-    try {
-      await getLatestVersion('int/2.3.5')
-    } catch (error) {
-      expect(error.message).toEqual('No versions available.')
-    }
-  })
-
-  afterEach(() => jest.resetAllMocks())
-})
+const KEYS = [
+  { Key: 'int/1.0.0/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'int/1.0.0/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'int/1.0.0/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'int/1.0.0/smbc-frontend.min.css' },
+  { Key: 'int/1.0.0/smbc-frontend.min.js' },
+  { Key: 'int/1.0.1/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'int/1.0.1/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'int/1.0.1/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'int/1.0.1/smbc-frontend.min.css' },
+  { Key: 'int/1.0.1/smbc-frontend.min.js' },
+  { Key: 'int/1.1.1/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'int/1.1.1/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'int/1.1.1/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'int/1.1.1/smbc-frontend.min.css' },
+  { Key: 'int/1.1.1/smbc-frontend.min.js' },
+  { Key: 'int/1.2.10/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'int/1.2.10/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'int/1.2.10/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'int/1.2.10/smbc-frontend.min.css' },
+  { Key: 'int/1.2.10/smbc-frontend.min.js' },
+  { Key: 'int/1.2.11/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'int/1.2.11/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'int/1.2.11/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'int/1.2.11/smbc-frontend.min.css' },
+  { Key: 'int/1.2.11/smbc-frontend.min.js' },
+  { Key: 'int/1.2.9/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'int/1.2.9/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'int/1.2.9/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'int/1.2.9/smbc-frontend.min.css' },
+  { Key: 'int/1.2.9/smbc-frontend.min.js' },
+  { Key: 'int/1.5.0/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'int/1.5.0/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'int/1.5.0/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'int/1.5.0/smbc-frontend.min.css' },
+  { Key: 'int/1.5.0/smbc-frontend.min.js' },
+  { Key: 'int/1.5.2/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'int/1.5.2/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'int/1.5.2/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'int/1.5.2/smbc-frontend.min.css' },
+  { Key: 'int/1.5.2/smbc-frontend.min.js' },
+  { Key: 'prod/1.0.0/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'prod/1.0.0/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'prod/1.0.0/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'prod/1.0.0/smbc-frontend.min.css' },
+  { Key: 'prod/1.0.0/smbc-frontend.min.js' },
+  { Key: 'prod/1.0.1/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'prod/1.0.1/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'prod/1.0.1/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'prod/1.0.1/smbc-frontend.min.css' },
+  { Key: 'prod/1.0.1/smbc-frontend.min.js' },
+  { Key: 'prod/1.1.1/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'prod/1.1.1/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'prod/1.1.1/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'prod/1.1.1/smbc-frontend.min.css' },
+  { Key: 'prod/1.1.1/smbc-frontend.min.js' },
+  { Key: 'prod/1.2.10/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'prod/1.2.10/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'prod/1.2.10/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'prod/1.2.10/smbc-frontend.min.css' },
+  { Key: 'prod/1.2.10/smbc-frontend.min.js' },
+  { Key: 'prod/1.2.11/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'prod/1.2.11/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'prod/1.2.11/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'prod/1.2.11/smbc-frontend.min.css' },
+  { Key: 'prod/1.2.11/smbc-frontend.min.js' },
+  { Key: 'prod/1.2.9/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'prod/1.2.9/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'prod/1.2.9/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'prod/1.2.9/smbc-frontend.min.css' },
+  { Key: 'prod/1.2.9/smbc-frontend.min.js' },
+  { Key: 'prod/1.5.0/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'prod/1.5.0/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'prod/1.5.0/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'prod/1.5.0/smbc-frontend.min.css' },
+  { Key: 'prod/1.5.0/smbc-frontend.min.js' },
+  { Key: 'prod/1.5.2/assets/images/smbc_header_mobile_logo_180x37.png' },
+  { Key: 'prod/1.5.2/assets/images/smbc_header_mobile_logo_240x64.png' },
+  { Key: 'prod/1.5.2/assets/fonts/font-awesome/fa-solid-900.eot' },
+  { Key: 'prod/1.5.2/smbc-frontend.min.css' },
+  { Key: 'prod/1.5.2/smbc-frontend.min.js' }
+]
 
 describe('versionHandler', () => {
-  beforeEach(() => {
-    AWS.Credentials = jest.fn()
-  })
+  beforeEach(() => { AWS.Credentials = jest.fn() })
 
   it('Should return 400 when path null', async () => {
     expect((await handler({})).statusCode).toBe(400)
@@ -279,48 +96,32 @@ describe('versionHandler', () => {
     expect((await handler({ path: 'invalid_path' })).statusCode).toBe(400)
   })
 
-  it('Should return 404 when getLatestVersion throws error', async () => {
+  it('Should return 404 when getSpecificVersion throws error', async () => {
     const mockListObjectV2 = jest.fn((bucketParams, callback) => {
-      callback(undefined, {
-        Contents: [
-          { Key: 'int/2.0.1' },
-          { Key: 'int/1.1.2' },
-          { Key: 'int/1.1.1' }
-        ]
-      })
+      callback(undefined, { Contents: KEYS })
     })
 
     AWS.S3 = jest.fn().mockImplementation(() => ({
       listObjectsV2: mockListObjectV2
     }))
 
-    const result = await handler({ path: '/int/1.1.0/smbc-frontend.min.css' })
+    const result = await handler({ path: '/int/1.0.2/smbc-frontend.min.css' })
     expect(result.statusCode).toBe(404)
-    expect(result.body).toEqual('No versions available.')
+    expect(result.body).toContain('No specific version available.')
   })
 
   it('Should return 302 when file found', async () => {
-    const mockListObjectV2 = jest.fn((bucketParams, callback) => {
-      callback(undefined, {
-        Contents: [
-          { Key: 'int/2.0.1/smbc-frontend-ie8.min.css' },
-          { Key: 'int/1.1.2/smbc-frontend-ie8.min.css' },
-          { Key: 'int/1.1.1/smbc-frontend-ie8.min.css' }
-        ]
-      })
+    const mockListObjectV2 = jest.fn((_, callback) => {
+      callback(undefined, { Contents: KEYS })
     })
 
     AWS.S3 = jest.fn().mockImplementation(() => ({
       listObjectsV2: mockListObjectV2
     }))
 
-    const result = await handler({
-      path: '/int/1.1.1/smbc-frontend-ie8.min.css'
-    })
+    const result = await handler({ path: '/int/1.0.0/smbc-frontend.min.css' })
     expect(result.statusCode).toBe(302)
-    expect(result.headers.Location).toContain(
-      '/int/1.1.1/smbc-frontend-ie8.min.css'
-    )
+    expect(result.headers.Location).toContain('/int/1.0.0/smbc-frontend.min.css')
   })
 
   it('Should return 302 when file found for .woff extenison', async () => {
@@ -340,9 +141,7 @@ describe('versionHandler', () => {
       path: '/int/1/assets/fonts/fa-solid-900.woff'
     })
     expect(result.statusCode).toBe(302)
-    expect(result.headers.Location).toContain(
-      '/int/1.1.1/assets/fonts/fa-solid-900.woff'
-    )
+    expect(result.headers.Location).toContain('/int/1.1.1/assets/fonts/fa-solid-900.woff')
   })
 
   it('Should return 302 when file found for .tff extenison', async () => {
@@ -362,9 +161,7 @@ describe('versionHandler', () => {
       path: '/int/1/assets/fonts/fa-solid-900.ttf'
     })
     expect(result.statusCode).toBe(302)
-    expect(result.headers.Location).toContain(
-      '/int/1.1.1/assets/fonts/fa-solid-900.ttf'
-    )
+    expect(result.headers.Location).toContain('/int/1.1.1/assets/fonts/fa-solid-900.ttf')
   })
 
   it('Should return 302 when file found for .eot extenison', async () => {
@@ -384,9 +181,7 @@ describe('versionHandler', () => {
       path: '/int/1/assets/fonts/fa-solid-900.eot'
     })
     expect(result.statusCode).toBe(302)
-    expect(result.headers.Location).toContain(
-      '/int/1.1.1/assets/fonts/fa-solid-900.eot'
-    )
+    expect(result.headers.Location).toContain('/int/1.1.1/assets/fonts/fa-solid-900.eot')
   })
 
   it('Should return 302 with latest major when file found', async () => {
@@ -408,9 +203,7 @@ describe('versionHandler', () => {
       path: '/int/2/smbc-frontend-ie8.min.css'
     })
     expect(result.statusCode).toBe(302)
-    expect(result.headers.Location).toContain(
-      '/int/2.4.4/smbc-frontend-ie8.min.css'
-    )
+    expect(result.headers.Location).toContain('/int/2.4.4/smbc-frontend-ie8.min.css')
   })
 
   it('Should return 302 with latest major and minor when file found', async () => {
@@ -432,9 +225,52 @@ describe('versionHandler', () => {
       path: '/int/2.4/smbc-frontend-ie8.min.css'
     })
     expect(result.statusCode).toBe(302)
-    expect(result.headers.Location).toContain(
-      '/int/2.4.8/smbc-frontend-ie8.min.css'
-    )
+    expect(result.headers.Location).toContain('/int/2.4.8/smbc-frontend-ie8.min.css')
+  })
+
+  // match highest patch from major & minor
+  it('Should match highest patch from major & minor', async () => {
+    const mockListObjectV2 = jest.fn((_, callback) => {
+      callback(undefined, { Contents: KEYS })
+    })
+
+    AWS.S3 = jest.fn().mockImplementation(() => ({
+      listObjectsV2: mockListObjectV2
+    }))
+
+    const result = await handler({ path: '/int/1.2/smbc-frontend.min.css' })
+    expect(result.statusCode).toBe(302)
+    expect(result.headers.Location).toContain('/int/1.2.11/smbc-frontend.min.css')
+  })
+
+  // match highest minor from major
+  it('Should match highest minor from major', async () => {
+    const mockListObjectV2 = jest.fn((_, callback) => {
+      callback(undefined, { Contents: KEYS })
+    })
+
+    AWS.S3 = jest.fn().mockImplementation(() => ({
+      listObjectsV2: mockListObjectV2
+    }))
+
+    const result = await handler({ path: '/int/1/smbc-frontend.min.css' })
+    expect(result.statusCode).toBe(302)
+    expect(result.headers.Location).toContain('/int/1.5.2/smbc-frontend.min.css')
+  })
+
+  // match specific version
+  it('Should match specific version', async () => {
+    const mockListObjectV2 = jest.fn((_, callback) => {
+      callback(undefined, { Contents: KEYS })
+    })
+
+    AWS.S3 = jest.fn().mockImplementation(() => ({
+      listObjectsV2: mockListObjectV2
+    }))
+
+    const result = await handler({ path: '/int/1.2.9/smbc-frontend.min.css' })
+    expect(result.statusCode).toBe(302)
+    expect(result.headers.Location).toContain('/int/1.2.9/smbc-frontend.min.css')
   })
 
   afterEach(() => jest.resetAllMocks())

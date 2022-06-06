@@ -1,132 +1,137 @@
 const AWS = require('aws-sdk')
 
-const key = process.env.KEY
-const secret = process.env.SECRET
+const KEY = process.env.KEY
+const SECRET = process.env.SECRET
 const S3_URL = process.env.S3_URL
+const REGION = 'eu-west-1'
+const BUCKETNAME = 'stockportgov-design-system'
 
-const getEnvironment = string => {
-  const matches = string.match(/(int|qa|stage|prod){1}\//)
-
-  if (!matches) {
-    throw new Error('No environment provided.')
-  }
-
-  return matches[1]
-}
-
-const getVersionObject = string => {
-  const version = {
-    major: string.match(/([0-9]{1,})[.]{0,1}/),
-    minor: string.match(/[.]([0-9]{1,})[.]{0,1}/),
-    patch: string.match(/[0-9]{0,}[.][0-9]{0,}[.]([0-9]{1,})/),
-    original: string
-  }
-
-  version.major = version.major && version.major[1] ? version.major[1] : null
-  version.minor = version.minor && version.minor[1] ? version.minor[1] : null
-  version.patch = version.patch && version.patch[1] ? version.patch[1] : null
-
-  return version
-}
-
-const getS3Versions = () =>
-  new Promise((resolve, reject) => {
-    const s3 = new AWS.S3({
-      region: 'eu-west-1',
-      credentials: new AWS.Credentials(key, secret)
-    })
-
-    const bucketParams = {
-      Bucket: 'stockportgov-design-system'
-    }
+const getS3ObjectKeys = ( ) => {
+  return new Promise((resolve, reject) => {
+    const s3 = new AWS.S3({ region: REGION, credentials: new AWS.Credentials(KEY, SECRET) })
+    const bucketParams = { Bucket: BUCKETNAME, Prefix: prefix }
 
     s3.listObjectsV2(bucketParams, (err, data) => {
       if (err) {
-        reject(new Error('No versions available.'))
+        reject(new Error('Error from ListObjects - No versions available.'))
       } else if (data) {
         resolve(data.Contents.map(_ => _.Key))
       }
     })
   })
-
-const getLatestVersion = async fileVersion => {
-  const keys = await getS3Versions()
-  const environment = getEnvironment(fileVersion)
-  const versionSearchingFor = getVersionObject(fileVersion)
-  const keysByEnvironment = keys.filter(key => key.includes(`${environment}/`))
-  const keysWithVersion = keysByEnvironment.filter(key => /[aA-zZ]\/[0-9]+./.test(key))
-  const versionObjects = keysWithVersion.map(key => getVersionObject(key))
-  const majorVersions = versionObjects.filter(version => version.major === versionSearchingFor.major)
-  majorVersions.sort(function (a, b) { return parseInt(b.patch) - parseInt(a.patch) })
-  majorVersions.sort(function (a, b) { return parseInt(b.minor) - parseInt(a.minor) })
-
-  var foundVersion
-  if (versionSearchingFor.minor !== null && versionSearchingFor.patch !== null) {
-    foundVersion = majorVersions.filter(version => version.minor === versionSearchingFor.minor && version.patch === versionSearchingFor.patch)
-  } else if (versionSearchingFor.minor !== null && versionSearchingFor.patch === null) {
-    foundVersion = majorVersions.filter(version => version.minor === versionSearchingFor.minor)
-  } else if (versionSearchingFor.minor === null && versionSearchingFor.patch === null) {
-    foundVersion = majorVersions
-  }
-
-  if (!foundVersion.length) {
-    throw new Error('No versions available.')
-  }
-
-  return foundVersion.map(v => v.original)
 }
 
+const getSpecificVersion = async (environment, version, filename) => {
+  var prefix = `${environment}/${version}`
+  const keys = await getS3ObjectKeys(prefix)
+  if (!keys) {
+    throw new Error(`No specific version available. Was not able to find v${version} in the ${environment} bucket`)
+  }
+
+  const key = keys.find(key => key === `${prefix}/${filename}`)
+  if (!key) {
+    throw new Error(`No specific version available. Was not able to find v${version} of ${filename}`)
+  }
+
+  return key
+}
+
+const getLatestPatchVersion = async (environment, major, minor, filename) => {
+  const prefix = `${environment}/${major}.${minor}.`
+  const keys = await getS3ObjectKeys(prefix)
+  if (!keys) {
+    throw new Error(`No versions available. Was not able to find patch for v${major}.${minor}.x in the ${environment} bucket for ${filename}`)
+  }
+
+  const versionsWithFilename = keys.filter(key => key.endsWith(filename))
+  if (!versionsWithFilename) {
+    throw new Error(`No versions available. Was not able to find patch for v${major}.${minor}.x in the ${environment} bucket for ${filename}`)
+  }
+
+  const regex = /^[\w\W]*\/([0-9]*)\.([0-9]*)\.([0-9]*)\/[\w\W]*$/
+  var versions = versionsWithFilename.map(key => {
+    const matches = key.match(regex)
+    if (matches) {
+      return Object.create({ major: matches[1], minor: matches[2], patch: matches[3] })
+    }
+  })
+
+  // Sort descending
+  versions.sort(function (a, b) { return parseInt(b.patch) - parseInt(a.patch) })
+
+  const latestPatchVersion = versions[0]
+  var version = `${latestPatchVersion.major}.${latestPatchVersion.minor}.${latestPatchVersion.patch}`
+
+  return `${environment}/${version}/${filename}`
+}
+
+const getLatestMinorVersion = async (environment, major, filename) => {
+  const prefix = `${environment}/${major}.`
+  const keys = await getS3ObjectKeys(prefix)
+  if (!keys) {
+    throw new Error(`No versions available. Was not able to find latest minor version for v${major}.x.x in the ${environment} bucket for ${filename}`)
+  }
+
+  const versionsWithFilename = keys.filter(key => key.endsWith(filename))
+  if (!versionsWithFilename) {
+    throw new Error(`No versions available. Was not able to find latest minor version for v${major}.x.x in the ${environment} bucket for ${filename}`)
+  }
+
+  const regex = /^[\w\W]*\/([0-9]*)\.([0-9]*)\.([0-9]*)\/[\w\W]*$/
+  var versions = versionsWithFilename.map(key => {
+    const matches = key.match(regex)
+    if (matches) {
+      return Object.create({ major: matches[1], minor: matches[2], patch: matches[3] })
+    }
+  })
+
+  // Sort descending
+  versions.sort(function (a, b) { return parseInt(b.patch) - parseInt(a.patch) })
+  versions.sort(function (a, b) { return parseInt(b.minor) - parseInt(a.minor) })
+
+  const latestMinorVersion = versions[0]
+  var version = `${latestMinorVersion.major}.${latestMinorVersion.minor}.${latestMinorVersion.patch}`
+
+  return `${environment}/${version}/${filename}`
+}
+
+const StatusCode = code => new Promise(resolve => resolve({ statusCode: code }))
+
 const versionHandler = async ({ path }) => {
-  if (!path) {
-    return new Promise(resolve =>
-      resolve({
-        statusCode: 400
-      })
-    )
-  }
+  if (!path) return StatusCode(400)
 
-  const matches = path.match(
-    /^(\/(int|qa|stage|prod){1}\/?([0-9]+(\.[0-9]+){0,2})\/)(([\w\W]*).min.css|([\w\W]*).min.js|([\w\W]*).woff|([\w\W]*).ttf|([\w\W]*).eot){1}$/
-  )
+  const regex = /^\/(int|qa|stage|prod)\/([0-9]|[0-9]\.[0-9]|[0-9]\.[0-9]\.[0-9])\/([\w\W]*.[min.css|min.js|woff|woff2|ttf|eot])$/
+  const matches = path.match(regex)
+  if (!matches) return StatusCode(400)
 
-  // wrapped in promise as lambda requries a promise to be returned
-  if (!matches) {
-    return new Promise(resolve =>
-      resolve({
-        statusCode: 400
-      })
-    )
-  }
-
-  const version = matches[1]
+  const environment = matches[1]
+  const version = matches[2]
+  const fileName = matches[3]
 
   try {
-    const filesFound = await getLatestVersion(version)
-    const regex = new RegExp(`(${matches[5].substr(1)}){1}`, 'g')
-    const key = filesFound.find(key => !!regex.exec(key))
-
-    if (!key) {
-      throw new Error('No versions available.')
+    var key
+    const versionArray = version.split('.')
+    if (versionArray.length === 3) {
+      key = await getSpecificVersion(environment, version, fileName)
+    } else if (versionArray.length === 2) {
+      key = await getLatestPatchVersion(environment, versionArray[0], versionArray[1], fileName)
+    } else if (versionArray.length === 1) {
+      key = await getLatestMinorVersion(environment, versionArray[0], fileName)
     }
 
     return {
-      statusCode: 302,
-      headers: {
-        Location: `${S3_URL}/${key}`
-      }
+      statusCode: 302, headers: { Location: `${S3_URL}/${key}` }
     }
   } catch (error) {
     return {
-      statusCode: 404,
-      body: error.message
+      statusCode: 404, body: error.message
     }
   }
 }
 
 module.exports = {
-  getEnvironment,
-  getVersionObject,
-  getS3Versions,
-  getLatestVersion,
+  getSpecificVersion,
+  getLatestPatchVersion,
+  getLatestMinorVersion,
   handler: versionHandler
 }
