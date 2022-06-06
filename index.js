@@ -6,7 +6,7 @@ const S3_URL = process.env.S3_URL
 const REGION = 'eu-west-1'
 const BUCKETNAME = 'stockportgov-design-system'
 
-const getS3ObjectKeys = ( ) => {
+const getS3ObjectKeys = (prefix) => {
   return new Promise((resolve, reject) => {
     const s3 = new AWS.S3({ region: REGION, credentials: new AWS.Credentials(KEY, SECRET) })
     const bucketParams = { Bucket: BUCKETNAME, Prefix: prefix }
